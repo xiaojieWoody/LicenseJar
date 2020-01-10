@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import java.io.File;
+import java.io.*;
 import java.util.List;
 
 /**
@@ -42,16 +42,31 @@ public class CustomLicenseManager extends LicenseManager {
 
         // 从指定路径获取License证书
         LicenseConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseConfig.class);
-        File keyLicense = new File(licenseConfig.getLicensePath());
-        if(!keyLicense.exists()) {
+        File keyLicenseFile = new File(licenseConfig.getLicensePath());
+        if(!keyLicenseFile.exists()) {
             throw new NoLicenseInstalledException(getLicenseParam().getSubject() + "-证书不存在，请先上传证书！");
         }
-        byte[] key = FileUtils.readFileToByteArray(keyLicense);
+        byte[] key = null;
+        try {
+            key = FileUtils.readFileToByteArray(keyLicenseFile);
+        } catch (EOFException e) {
+            System.out.println("流已关闭！");
+        } catch (Exception e) {
+            log.error("读取License文件异常...", e);
+        }
 
-        if (null == key){
+        if (null == key || key.length == 0){
             throw new NoLicenseInstalledException(getLicenseParam().getSubject() + "-License获取失败！");
         }
-        certificate = getPrivacyGuard().key2cert(key);
+
+        try {
+            certificate = getPrivacyGuard().key2cert(key);
+        }  catch (EOFException e) {
+            System.out.println("流已关闭！");
+        } catch (Exception e) {
+            log.error("读取License证书异常...", e);
+        }
+
         notary.verify(certificate);
         final LicenseContent content = (LicenseContent) certificate.getContent();
         this.validate(content);
