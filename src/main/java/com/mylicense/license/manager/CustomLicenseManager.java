@@ -30,25 +30,6 @@ public class CustomLicenseManager extends LicenseManager {
     }
 
     /**
-     * 重写install方法
-     * 其中validate方法调用本类中的validate方法，校验Mac地址等其他信息
-     * @param key
-     * @param notary
-     * @return
-     * @throws Exception
-     */
-    @Override
-    protected synchronized LicenseContent install(final byte[] key, final LicenseNotary notary) throws Exception {
-        final GenericCertificate certificate = getPrivacyGuard().key2cert(key);
-        notary.verify(certificate);
-        final LicenseContent content = (LicenseContent) certificate.getContent();
-        this.validate(content);
-        setLicenseKey(key);
-        setCertificate(certificate);
-        return content;
-    }
-
-    /**
      * 重写verify方法
      * 调用本类中的validate方法，校验Mac地址等其他信息
      * @param notary
@@ -58,9 +39,6 @@ public class CustomLicenseManager extends LicenseManager {
     @Override
     protected synchronized LicenseContent verify(final LicenseNotary notary) throws Exception {
         GenericCertificate certificate = getCertificate();
-        // Load license key from preferences,
-        // 从安装中获取License文件
-//        final byte[] key = getLicenseKey();
 
         // 从指定路径获取License证书
         LicenseConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseConfig.class);

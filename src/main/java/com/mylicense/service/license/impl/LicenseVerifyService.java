@@ -1,14 +1,16 @@
-package com.mylicense.license.verify;
+package com.mylicense.service.license.impl;
 
 import com.mylicense.common.SpringContextUtils;
 import com.mylicense.config.LicenseConfig;
 import com.mylicense.license.manager.LicenseManagerHolder;
 import com.mylicense.license.param.CustomKeyStoreParam;
 import com.mylicense.license.param.LicenseVerifyParam;
+import com.mylicense.service.license.ILicenseVerifyService;
 import de.schlichtherle.license.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
-import org.springframework.stereotype.Component;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.net.URL;
 import java.text.DateFormat;
@@ -16,41 +18,24 @@ import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
 import java.util.prefs.Preferences;
 
-/**
- * License校验
- */
 @Slf4j
-@Component
-public class LicenseVerify {
+@Service
+public class LicenseVerifyService implements ILicenseVerifyService {
 
     /**
-     * 安装License证书
-     */
-//    public synchronized LicenseContent install(LicenseVerifyParam param) {
-//        LicenseContent result = null;
-//        DateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-//        //安装证书
-//        try{
-//            LicenseManager licenseManager = LicenseManagerHolder.getInstance(initLicenseParam(param));
-//            licenseManager.uninstall();
-//
-//            result = licenseManager.install(new File(param.getLicensePath()));
-//            log.info(MessageFormat.format("证书安装成功，证书有效期：{0} - {1}",format.format(result.getNotBefore()),format.format(result.getNotAfter())));
-//        }catch (Exception e){
-//            log.error("证书安装失败！",e);
-//        }
-//        return result;
-//    }
-
-    /**
+     * 传入License路径
      * 校验License证书
      */
-    public boolean verify(){
-        // 单例模式，应用启动安装证书时已经初始化过
+    @Override
+    public boolean verify(String licensePath){
         LicenseVerifyParam param = new LicenseVerifyParam();
         LicenseConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseConfig.class);
+        if(!StringUtils.isEmpty(licensePath)) {
+            licenseConfig.setLicensePath(licensePath);
+        }
         BeanUtils.copyProperties(licenseConfig, param);
-        URL publickeyResource = LicenseVerify.class.getClassLoader().getResource(licenseConfig.getPublicKeysStorePath());
+        // 获取公钥地址
+        URL publickeyResource = LicenseVerifyService.class.getClassLoader().getResource(licenseConfig.getPublicKeysStorePath());
         if(publickeyResource != null) {
             param.setPublicKeysStorePath(publickeyResource.getPath());
         } else {
@@ -74,11 +59,11 @@ public class LicenseVerify {
      * 初始化证书生成参数
      */
     private LicenseParam initLicenseParam(LicenseVerifyParam param){
-        Preferences preferences = Preferences.userNodeForPackage(LicenseVerify.class);
+        Preferences preferences = Preferences.userNodeForPackage(LicenseVerifyService.class);
 
         CipherParam cipherParam = new DefaultCipherParam(param.getStorePass());
 
-        KeyStoreParam publicStoreParam = new CustomKeyStoreParam(LicenseVerify.class
+        KeyStoreParam publicStoreParam = new CustomKeyStoreParam(LicenseVerifyService.class
                 ,param.getPublicKeysStorePath()
                 ,param.getPublicAlias()
                 ,param.getStorePass()
