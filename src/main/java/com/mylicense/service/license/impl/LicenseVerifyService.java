@@ -1,7 +1,10 @@
 package com.mylicense.service.license.impl;
 
+import com.mylicense.common.ResMsg;
 import com.mylicense.common.SpringContextUtils;
-import com.mylicense.config.LicenseConfig;
+import com.mylicense.config.EnvConfigUtil;
+import com.mylicense.config.LicenseInfoConfig;
+import com.mylicense.httpclient.HttpClientUtil;
 import com.mylicense.license.manager.LicenseManagerHolder;
 import com.mylicense.license.param.CustomKeyStoreParam;
 import com.mylicense.license.param.LicenseVerifyParam;
@@ -16,6 +19,7 @@ import java.net.URL;
 import java.text.DateFormat;
 import java.text.MessageFormat;
 import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.prefs.Preferences;
 
 @Slf4j
@@ -27,9 +31,9 @@ public class LicenseVerifyService implements ILicenseVerifyService {
      * 校验License证书
      */
     @Override
-    public boolean verify(String licensePath){
+    public ResMsg verify(String licensePath){
         LicenseVerifyParam param = new LicenseVerifyParam();
-        LicenseConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseConfig.class);
+        LicenseInfoConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseInfoConfig.class);
         if(!StringUtils.isEmpty(licensePath)) {
             licenseConfig.setLicensePath(licensePath);
         }
@@ -48,10 +52,20 @@ public class LicenseVerifyService implements ILicenseVerifyService {
         try {
             LicenseContent licenseContent = licenseManager.verify();
             log.info(MessageFormat.format("证书校验通过，证书有效期：{0} - {1}",format.format(licenseContent.getNotBefore()),format.format(licenseContent.getNotAfter())));
-            return true;
+
+            // 证书结束日期
+            licenseConfig.setLicenseValidDate(format.format(licenseContent.getNotAfter()));
+            // 证书剩余时间
+            licenseConfig.setRemainTime(getRemainTime(new Date(), licenseContent.getNotAfter()));
+            log.warn("证书有效期剩余时间{}",licenseConfig.getRemainTime());
+
+            return new ResMsg(200, "success", "", null);
         }catch (Exception e){
             log.error("证书校验失败！",e);
-            return false;
+            EnvConfigUtil envConfigUtil = SpringContextUtils.getBeanByClass(EnvConfigUtil.class);
+            // 关闭应用
+            HttpClientUtil.postReqNoParam(envConfigUtil.getIpPort() +"/actuator/shutdown");
+            return new ResMsg(200, "fail", "证书校验失败！", null);
         }
     }
 
@@ -73,5 +87,29 @@ public class LicenseVerifyService implements ILicenseVerifyService {
                 ,preferences
                 ,publicStoreParam
                 ,cipherParam);
+    }
+
+    /**
+     * 日期相减
+     * @param beginTime
+     * @param endTime
+     * @return
+     */
+    public String getRemainTime(Date beginTime, Date endTime) {
+        if(beginTime == null || endTime == null) {
+            return null;
+        }
+        if(endTime.before(beginTime)) {
+            return null;
+        }
+
+        long diff = endTime.getTime() - beginTime.getTime();
+
+        long diffSeconds = diff / 1000 % 60;
+        long diffMinutes = diff / (60 * 1000) % 60;
+        long diffHours = diff / (60 * 60 * 1000) % 24;
+        long diffDays = diff / (24 * 60 * 60 * 1000);
+
+        return diffDays +"天" + diffHours + "小时" + diffMinutes + "分" + diffSeconds + "秒";
     }
 }

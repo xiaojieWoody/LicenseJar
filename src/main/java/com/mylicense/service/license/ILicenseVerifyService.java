@@ -1,10 +1,12 @@
 package com.mylicense.service.license;
 
+import com.mylicense.common.ResMsg;
+
 public interface ILicenseVerifyService {
 
     /**
      * 传入License路径
      * 校验License证书
      */
-    boolean verify(String licensePath) throws Exception;
+    ResMsg verify(String licensePath) throws Exception;
 }

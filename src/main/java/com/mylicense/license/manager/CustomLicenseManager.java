@@ -2,7 +2,7 @@ package com.mylicense.license.manager;
 
 import com.alibaba.fastjson.JSON;
 import com.mylicense.common.SpringContextUtils;
-import com.mylicense.config.LicenseConfig;
+import com.mylicense.config.LicenseInfoConfig;
 import com.mylicense.license.machine.AbstractMachineInfo;
 import com.mylicense.license.machine.LinuxMachineInfo;
 import com.mylicense.license.machine.WindowsMachineInfo;
@@ -41,7 +41,7 @@ public class CustomLicenseManager extends LicenseManager {
         GenericCertificate certificate = getCertificate();
 
         // 从指定路径获取License证书
-        LicenseConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseConfig.class);
+        LicenseInfoConfig licenseConfig = SpringContextUtils.getBeanByClass(LicenseInfoConfig.class);
         File keyLicenseFile = new File(licenseConfig.getLicensePath());
         if(!keyLicenseFile.exists()) {
             throw new NoLicenseInstalledException(getLicenseParam().getSubject() + "-证书不存在，请先上传证书！");
@@ -59,13 +59,7 @@ public class CustomLicenseManager extends LicenseManager {
             throw new NoLicenseInstalledException(getLicenseParam().getSubject() + "-License获取失败！");
         }
 
-        try {
-            certificate = getPrivacyGuard().key2cert(key);
-        }  catch (EOFException e) {
-            System.out.println("流已关闭！");
-        } catch (Exception e) {
-            log.error("读取License证书异常...", e);
-        }
+        certificate = getPrivacyGuard().key2cert(key);
 
         notary.verify(certificate);
         final LicenseContent content = (LicenseContent) certificate.getContent();

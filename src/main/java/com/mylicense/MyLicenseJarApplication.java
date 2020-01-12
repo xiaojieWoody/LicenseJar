@@ -8,6 +8,6 @@ public class MyLicenseJarApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(MyLicenseJarApplication.class, args);
+//		LicenseInit.init();
 	}
-
 }
